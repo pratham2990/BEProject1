@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Robot Control</title>
+    <style>
+        body { text-align: center; font-family: Arial; }
+        button {
+            width: 120px;
+            height: 50px;
+            margin: 5px;
+            font-size: 16px;
+        }
+        input[type=range] {
+            width: 300px;
+        }
+    </style>
+</head>
+<body>
+
+<h2>Robot Control Panel</h2>
+
+<h3>Live Camera</h3>
+<img src="/video" width="400">
+
+<br><br>
+
+<h3>Robot Movement</h3>
+
+<button onmousedown="setControl(200,1,200,1)" onmouseup="stop()">Forward</button><br>
+<button onmousedown="setControl(100,0,100,1)" onmouseup="stop()">Left</button>
+<button onclick="stop()">Stop</button>
+<button onmousedown="setControl(100,1,100,0)" onmouseup="stop()">Right</button><br>
+<button onmousedown="setControl(200,0,200,0)" onmouseup="stop()">Backward</button>
+
+<br><br>
+
+<h3>Robotic Arm Control</h3>
+
+Servo 1:<br>
+<input type="range" min="0" max="180" value="90" oninput="moveServo(1, this.value)">
+<br><br>
+
+Servo 2:<br>
+<input type="range" min="0" max="180" value="90" oninput="moveServo(2, this.value)">
+<br><br>
+
+Servo 3:<br>
+<input type="range" min="0" max="180" value="90" oninput="moveServo(3, this.value)">
+<br><br>
+
+Servo 4:<br>
+<input type="range" min="0" max="180" value="90" oninput="moveServo(4, this.value)">
+<br><br>
+
+Servo 5:<br>
+<input type="range" min="0" max="180" value="90" oninput="moveServo(5, this.value)">
+
+<script>
+function setControl(ls, ld, rs, rd) {
+    send(ls, ld, rs, rd);
+}
+
+function stop() {
+    send(0,0,0,0);
+}
+
+function send(ls, ld, rs, rd) {
+    fetch('/control', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `ls=${ls}&ld=${ld}&rs=${rs}&rd=${rd}`
+    });
+}
+
+// 🔥 Servo control
+function moveServo(id, angle) {
+    fetch('/servo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `id=${id}&angle=${angle}`
+    });
+}
+</script>
+
+</body>
+</html>
