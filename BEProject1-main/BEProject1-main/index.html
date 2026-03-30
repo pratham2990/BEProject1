@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Robot Control</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            text-align: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            color: #e0e0e0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        h2 {
+            color: #ff4444;
+            font-size: 2.5em;
+            margin-bottom: 30px;
+            text-shadow: 0 2px 10px rgba(255, 68, 68, 0.3);
+            letter-spacing: 2px;
+        }
+        
+        h3 {
+            color: #ff6666;
+            font-size: 1.5em;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #ff4444;
+            padding-bottom: 10px;
+            display: inline-block;
+            width: 80%;
+        }
+        
+        img {
+            border: 3px solid #ff4444;
+            border-radius: 8px;
+            margin: 20px 0;
+            box-shadow: 0 0 20px rgba(255, 68, 68, 0.2);
+        }
+        
+        button {
+            width: 120px;
+            height: 50px;
+            margin: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            background-color: #ff4444;
+            color: #ffffff;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(255, 68, 68, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        button:hover {
+            background-color: #ff6666;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 68, 68, 0.5);
+        }
+        
+        button:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 10px rgba(255, 68, 68, 0.3);
+        }
+        
+        .control-container {
+            background-color: rgba(60, 60, 60, 0.8);
+            padding: 20px;
+            margin: 20px auto;
+            border-radius: 10px;
+            max-width: 600px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        
+        .servo-group {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: rgba(40, 40, 40, 0.8);
+            border-left: 4px solid #ff4444;
+            border-radius: 6px;
+            text-align: left;
+            display: inline-block;
+            width: 90%;
+            max-width: 500px;
+        }
+        
+        .servo-label {
+            color: #ff6666;
+            font-weight: bold;
+            margin-bottom: 8px;
+            display: block;
+        }
+        
+        input[type=range] {
+            width: 100%;
+            max-width: 400px;
+            height: 8px;
+            border-radius: 5px;
+            background: linear-gradient(to right, #404040, #555555);
+            outline: none;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+        
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #ff4444;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(255, 68, 68, 0.4);
+            transition: all 0.2s ease;
+        }
+        
+        input[type=range]::-webkit-slider-thumb:hover {
+            background: #ff6666;
+            box-shadow: 0 4px 12px rgba(255, 68, 68, 0.6);
+            transform: scale(1.2);
+        }
+        
+        input[type=range]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #ff4444;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 8px rgba(255, 68, 68, 0.4);
+            transition: all 0.2s ease;
+        }
+        
+        input[type=range]::-moz-range-thumb:hover {
+            background: #ff6666;
+            box-shadow: 0 4px 12px rgba(255, 68, 68, 0.6);
+            transform: scale(1.2);
+        }
+        
+        input[type=range]::-moz-range-track {
+            background: transparent;
+            border: none;
+        }
+    </style>
+</head>
+<body>
+
+<h2>🤖 Robot Control Panel</h2>
+
+<h3>Live Camera</h3>
+<img src="/video" width="400">
+
+<br><br>
+
+<div class="control-container">
+    <h3>Robot Movement</h3>
+    <button onmousedown="setControl(200,1,200,1)" onmouseup="stop()">⬆ Forward</button><br>
+    <button onmousedown="setControl(100,0,100,1)" onmouseup="stop()">⬅ Left</button>
+    <button onclick="stop()">⏹ Stop</button>
+    <button onmousedown="setControl(100,1,100,0)" onmouseup="stop()">➡ Right</button><br>
+    <button onmousedown="setControl(200,0,200,0)" onmouseup="stop()">⬇ Backward</button>
+</div>
+
+<div class="control-container">
+    <h3>Robotic Arm Control</h3>
+    
+    <div class="servo-group">
+        <span class="servo-label">Servo 1</span>
+        <input type="range" min="0" max="180" value="90" oninput="moveServo(1, this.value)">
+    </div>
+    
+    <div class="servo-group">
+        <span class="servo-label">Servo 2</span>
+        <input type="range" min="0" max="180" value="90" oninput="moveServo(2, this.value)">
+    </div>
+    
+    <div class="servo-group">
+        <span class="servo-label">Servo 3</span>
+        <input type="range" min="0" max="180" value="90" oninput="moveServo(3, this.value)">
+    </div>
+    
+    <div class="servo-group">
+        <span class="servo-label">Servo 4</span>
+        <input type="range" min="0" max="180" value="90" oninput="moveServo(4, this.value)">
+    </div>
+    
+    <div class="servo-group">
+        <span class="servo-label">Servo 5</span>
+        <input type="range" min="0" max="180" value="90" oninput="moveServo(5, this.value)">
+    </div>
+</div>>
+
+<script>
+function setControl(ls, ld, rs, rd) {
+    send(ls, ld, rs, rd);
+}
+
+function stop() {
+    send(0,0,0,0);
+}
+
+function send(ls, ld, rs, rd) {
+    fetch('/control', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `ls=${ls}&ld=${ld}&rs=${rs}&rd=${rd}`
+    });
+}
+
+// 🔥 Servo control
+function moveServo(id, angle) {
+    fetch('/servo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `id=${id}&angle=${angle}`
+    });
+}
+</script>
+
+</body>
+</html>
