@@ -1,0 +1,27 @@
+setInterval(() => {
+
+    fetch('/get_detection')
+
+    .then(res => res.json())
+
+    .then(data => {
+
+        document.getElementById(
+            "det_label"
+        ).innerText =
+            data.label || "None";
+
+        document.getElementById(
+            "det_conf"
+        ).innerText =
+            data.confidence ?
+            Number(data.confidence).toFixed(2)
+            : "0";
+
+        document.getElementById(
+            "det_pos"
+        ).innerText =
+            data.position || "None";
+    });
+
+}, 500);
