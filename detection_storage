@@ -1,0 +1,28 @@
+# ---------------- DETECTION STORAGE ----------------
+detected_object = {
+    "label": None,
+    "confidence": 0,
+    "position": None
+}
+
+@app.route('/detection', methods=['POST'])
+def detection():
+
+    global detected_object
+
+    data = request.json
+
+    detected_object = {
+        "label": data.get("label"),
+        "confidence": data.get("confidence"),
+        "position": data.get("position")
+    }
+
+    print("Detected:", detected_object)
+
+    return "OK"
+
+@app.route('/get_detection')
+def get_detection():
+
+    return jsonify(detected_object)
