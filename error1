@@ -1,0 +1,81 @@
+ for pip install ultralytics --break-system-packages
+.
+.
+.
+ultralytics 8.0.63 depends on torch>=1.7.0
+    ultralytics 8.0.62 depends on torch>=1.7.0
+    ultralytics 8.0.61 depends on torch>=1.7.0
+    ultralytics 8.0.60 depends on torch>=1.7.0
+    ultralytics 8.0.59 depends on torch>=1.7.0
+    ultralytics 8.0.58 depends on torch>=1.7.0
+    ultralytics 8.0.57 depends on torch>=1.7.0
+    ultralytics 8.0.56 depends on torch>=1.7.0
+    ultralytics 8.0.55 depends on torch>=1.7.0
+    ultralytics 8.0.54 depends on torch>=1.7.0
+    ultralytics 8.0.53 depends on torch>=1.7.0
+    ultralytics 8.0.52 depends on torch>=1.7.0
+    ultralytics 8.0.51 depends on torch>=1.7.0
+    ultralytics 8.0.50 depends on torch>=1.7.0
+    ultralytics 8.0.49 depends on torch>=1.7.0
+    ultralytics 8.0.48 depends on torch>=1.7.0
+    ultralytics 8.0.47 depends on torch>=1.7.0
+    ultralytics 8.0.46 depends on torch>=1.7.0
+    ultralytics 8.0.45 depends on torch>=1.7.0
+    ultralytics 8.0.44 depends on torch>=1.7.0
+    ultralytics 8.0.43 depends on torch>=1.7.0
+    ultralytics 8.0.42 depends on torch>=1.7.0
+    ultralytics 8.0.41 depends on torch>=1.7.0
+    ultralytics 8.0.40 depends on torch>=1.7.0
+    ultralytics 8.0.39 depends on torch>=1.7.0
+    ultralytics 8.0.38 depends on torch>=1.7.0
+    ultralytics 8.0.37 depends on torch>=1.7.0
+    ultralytics 8.0.36 depends on torch>=1.7.0
+    ultralytics 8.0.35 depends on torch>=1.7.0
+    ultralytics 8.0.6 depends on torch>=1.7.0
+    ultralytics 8.0.5 depends on torch>=1.7.0
+    ultralytics 8.0.4 depends on torch>=1.7.0
+    ultralytics 8.0.3 depends on torch>=1.7.0
+    ultralytics 8.0.2 depends on torch>=1.7.0
+    ultralytics 8.0.1 depends on torch>=1.7.0
+    ultralytics 8.0.0 depends on torch>=1.7.0
+    ultralytics 0.0.44 depends on torch>=1.7.0
+    ultralytics 0.0.43 depends on torch>=1.7.0
+    ultralytics 0.0.42 depends on torch>=1.7.0
+    ultralytics 0.0.41 depends on torch>=1.7.0
+    ultralytics 0.0.40 depends on torch>=1.7.0
+    ultralytics 0.0.39 depends on torch>=1.7.0
+    ultralytics 0.0.38 depends on torch>=1.7.0
+    ultralytics 0.0.37 depends on torch>=1.7.0
+    ultralytics 0.0.36 depends on torch>=1.7.0
+    ultralytics 0.0.35 depends on torch>=1.7.0
+    ultralytics 0.0.34 depends on torch>=1.7.0
+    ultralytics 0.0.33 depends on torch>=1.7.0
+    ultralytics 0.0.32 depends on torch>=1.7.0
+    ultralytics 0.0.31 depends on torch>=1.7.0
+    ultralytics 0.0.30 depends on torch>=1.7.0
+    ultralytics 0.0.29 depends on torch>=1.7.0
+    ultralytics 0.0.28 depends on torch>=1.7.0
+    ultralytics 0.0.27 depends on torch>=1.7.0
+    ultralytics 0.0.26 depends on torch>=1.7.0
+    ultralytics 0.0.25 depends on torch>=1.7.0
+    ultralytics 0.0.24 depends on torch>=1.7.0
+    ultralytics 0.0.23 depends on torch>=1.7.0
+    ultralytics 0.0.22 depends on torch>=1.7.0
+    ultralytics 0.0.21 depends on torch>=1.7.0
+    ultralytics 0.0.20 depends on torch>=1.7.0
+    ultralytics 0.0.19 depends on torch>=1.7.0
+    ultralytics 0.0.18 depends on torch>=1.7.0
+    ultralytics 0.0.17 depends on torch>=1.7.0
+    ultralytics 0.0.16 depends on torch>=1.7.0
+    ultralytics 0.0.15 depends on torch>=1.7.0
+    ultralytics 0.0.14 depends on torch>=1.7.0
+    ultralytics 0.0.13 depends on torch>=1.7.0
+
+Additionally, some packages in these conflicts have no matching distributions available for your environment:
+    torch
+
+To fix this you could try to:
+1. loosen the range of package versions you've specified
+2. remove package versions to allow pip to attempt to solve the dependency conflict
+
+ERROR: ResolutionImpossible: for help visit https://pip.pypa.io/en/latest/topics/dependency-resolution/#dealing-with-dependency-conflicts
