@@ -1,238 +1,233 @@
-from flask import Flask, request, render_template, Response, jsonify
-import can
-import cv2
-import threading
-import time
+<!DOCTYPE html>
+<html>
 
-# Servo
-import board
-import busio
-from adafruit_pca9685 import PCA9685
+<head>
 
-app = Flask(__name__)
+    <title>Robot Control</title>
 
-# ---------------- CAN SETUP ----------------
-bus = can.interface.Bus(channel='can0', bustype='socketcan')
+    <style>
 
-control_data = [0, 0, 0, 0]
+        body {
+            text-align: center;
+            font-family: Arial;
+            background-color: #f5f5f5;
+        }
 
-def can_sender():
-    global control_data
+        button {
+            width: 120px;
+            height: 50px;
+            margin: 5px;
+            font-size: 16px;
+            border-radius: 8px;
+            border: none;
+            background-color: #4CAF50;
+            color: white;
+        }
 
-    SEND_INTERVAL = 0.02  # 50Hz
+        button:hover {
+            background-color: #45a049;
+        }
 
-    while True:
+        input[type=range] {
+            width: 300px;
+        }
 
-        msg = can.Message(
-            arbitration_id=0x100,
-            data=control_data,
-            is_extended_id=False
-        )
+        .card {
+            background: white;
+            padding: 15px;
+            margin: 15px auto;
+            width: 420px;
+            border-radius: 12px;
+            box-shadow: 0px 2px 10px rgba(0,0,0,0.1);
+        }
 
-        try:
-            bus.send(msg, timeout=0.01)
+    </style>
 
-        except can.CanError:
-            print("CAN buffer full")
+</head>
 
-        time.sleep(SEND_INTERVAL)
+<body onmouseup="stop()" ontouchend="stop()">
 
-threading.Thread(target=can_sender, daemon=True).start()
+<h2>🤖 Robot Control Panel</h2>
 
-# ---------------- CAMERA SETUP ----------------
-camera = cv2.VideoCapture(0, cv2.CAP_V4L2)
+<div class="card">
 
-camera.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+    <h3>🎥 Live Camera</h3>
 
-camera.set(3, 320)
-camera.set(4, 240)
-camera.set(5, 30)
+    <img src="/video" width="400">
 
-frame_global = None
+</div>
 
-def camera_thread():
+<div class="card">
 
-    global frame_global
+    <h3>🧠 Detection</h3>
 
-    while True:
+    <p><b>Object:</b> <span id="det_label">None</span></p>
 
-        success, frame = camera.read()
+    <p><b>Confidence:</b> <span id="det_conf">0</span></p>
 
-        if success:
-            frame_global = frame
+    <p><b>Position:</b> <span id="det_pos">None</span></p>
 
-threading.Thread(target=camera_thread, daemon=True).start()
+</div>
 
-# ---------------- VIDEO STREAM ----------------
-def generate_frames():
+<div class="card">
 
-    global frame_global
+    <h3>🚗 Robot Movement</h3>
 
-    while True:
+    <button
+        onmousedown="setControl(200,1,200,1)"
+        onmouseup="stop()"
+        ontouchstart="setControl(200,1,200,1)"
+        ontouchend="stop()">
 
-        if frame_global is None:
-            continue
+        Forward
 
-        _, buffer = cv2.imencode(
-            '.jpg',
-            frame_global,
-            [int(cv2.IMWRITE_JPEG_QUALITY), 60]
-        )
+    </button>
 
-        frame = buffer.tobytes()
+    <br>
 
-        yield (
-            b'--frame\r\n'
-            b'Content-Type: image/jpeg\r\n\r\n' +
-            frame +
-            b'\r\n'
-        )
+    <button
+        onmousedown="setControl(100,0,100,1)"
+        onmouseup="stop()"
+        ontouchstart="setControl(100,0,100,1)"
+        ontouchend="stop()">
 
-        time.sleep(0.03)
+        Left
 
-# ---------------- DETECTION STORAGE ----------------
-detected_object = {
-    "label": None,
-    "confidence": 0,
-    "position": None
+    </button>
+
+    <button
+        onmousedown="setControl(100,1,100,0)"
+        onmouseup="stop()"
+        ontouchstart="setControl(100,1,100,0)"
+        ontouchend="stop()">
+
+        Right
+
+    </button>
+
+    <br>
+
+    <button
+        onmousedown="setControl(200,0,200,0)"
+        onmouseup="stop()"
+        ontouchstart="setControl(200,0,200,0)"
+        ontouchend="stop()">
+
+        Backward
+
+    </button>
+
+</div>
+
+<div class="card">
+
+    <h3>🦾 Robotic Arm Control</h3>
+
+    Servo 1:<br>
+    <input type="range" min="0" max="180"
+           value="90"
+           onchange="moveServo(1, this.value)">
+
+    <br><br>
+
+    Servo 2:<br>
+    <input type="range" min="0" max="180"
+           value="90"
+           onchange="moveServo(2, this.value)">
+
+    <br><br>
+
+    Servo 3:<br>
+    <input type="range" min="0" max="180"
+           value="90"
+           onchange="moveServo(3, this.value)">
+
+    <br><br>
+
+    Servo 4:<br>
+    <input type="range" min="0" max="180"
+           value="90"
+           onchange="moveServo(4, this.value)">
+
+    <br><br>
+
+    Servo 5:<br>
+    <input type="range" min="0" max="180"
+           value="90"
+           onchange="moveServo(5, this.value)">
+
+</div>
+
+<script>
+
+// ---------------- MOVEMENT ----------------
+function setControl(ls, ld, rs, rd) {
+
+    fetch('/control', {
+
+        method: 'POST',
+
+        headers: {
+            'Content-Type':
+            'application/x-www-form-urlencoded'
+        },
+
+        body:
+        `ls=${ls}&ld=${ld}&rs=${rs}&rd=${rd}`
+    });
 }
 
-@app.route('/detection', methods=['POST'])
-def detection():
+function stop() {
 
-    global detected_object
+    setControl(0,0,0,0);
+}
 
-    data = request.json
+// ---------------- SERVO ----------------
+function moveServo(id, angle) {
 
-    detected_object = {
-        "label": data.get("label"),
-        "confidence": data.get("confidence"),
-        "position": data.get("position")
-    }
+    fetch('/servo', {
 
-    print("Detected:", detected_object)
+        method: 'POST',
 
-    return "OK"
+        headers: {
+            'Content-Type':
+            'application/x-www-form-urlencoded'
+        },
 
-@app.route('/get_detection')
-def get_detection():
-    return jsonify(detected_object)
+        body: `id=${id}&angle=${angle}`
+    });
+}
 
-# ---------------- SERVO SETUP ----------------
-i2c = busio.I2C(board.SCL, board.SDA)
+// ---------------- DETECTION DISPLAY ----------------
+setInterval(() => {
 
-pca = PCA9685(i2c)
-pca.frequency = 50
+    fetch('/get_detection')
 
-NUM_SERVOS = 5
+        .then(res => res.json())
 
-SERVO_CHANNELS = [4, 8, 9, 12, 13]
+        .then(data => {
 
-current_positions = [375] * NUM_SERVOS
+            document.getElementById(
+                "det_label"
+            ).innerText =
+                data.label || "None";
 
-# Initialize servos
-for i in range(NUM_SERVOS):
+            document.getElementById(
+                "det_conf"
+            ).innerText =
+                data.confidence ?
+                Number(data.confidence).toFixed(2)
+                : "0";
 
-    pca.channels[
-        SERVO_CHANNELS[i]
-    ].duty_cycle = current_positions[i] * 16
+            document.getElementById(
+                "det_pos"
+            ).innerText =
+                data.position || "None";
+        });
 
-def map_angle_to_pwm(angle):
+}, 500);
 
-    return int(
-        150 + (angle / 180.0) * (600 - 150)
-    )
+</script>
 
-# ---------------- SMOOTH SERVO ----------------
-def move_servo_smooth(index, target_pwm):
-
-    current_pwm = current_positions[index]
-
-    if abs(target_pwm - current_pwm) < 5:
-        return
-
-    diff = target_pwm - current_pwm
-
-    steps = 20
-
-    step_size = diff / steps
-
-    for _ in range(steps):
-
-        current_pwm += step_size
-
-        pca.channels[
-            SERVO_CHANNELS[index]
-        ].duty_cycle = int(current_pwm * 16)
-
-        time.sleep(0.01)
-
-    current_positions[index] = target_pwm
-
-# ---------------- ROUTES ----------------
-@app.route('/')
-def index():
-    return render_template('index.html')
-
-@app.route('/video')
-def video():
-
-    return Response(
-        generate_frames(),
-        mimetype='multipart/x-mixed-replace; boundary=frame'
-    )
-
-@app.route('/control', methods=['POST'])
-def control():
-
-    global control_data
-
-    data = request.form
-
-    control_data = [
-        int(data['ls']),
-        int(data['ld']),
-        int(data['rs']),
-        int(data['rd'])
-    ]
-
-    return "OK"
-
-@app.route('/servo', methods=['POST'])
-def servo_control():
-
-    data = request.form
-
-    try:
-
-        servo_id = int(data['id']) - 1
-
-        angle = float(data['angle'])
-
-        if servo_id >= NUM_SERVOS:
-            return "Invalid servo"
-
-        pwm_val = map_angle_to_pwm(angle)
-
-        threading.Thread(
-            target=move_servo_smooth,
-            args=(servo_id, pwm_val),
-            daemon=True
-        ).start()
-
-        return "OK"
-
-    except Exception as e:
-
-        print(e)
-
-        return "Error"
-
-# ---------------- MAIN ----------------
-if __name__ == '__main__':
-
-    app.run(
-        host='0.0.0.0',
-        port=5000,
-        threaded=True
-    )
+</body>
+</html>
