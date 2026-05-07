@@ -1,0 +1,22 @@
+<br><br>
+
+<h3>🧠 Detection</h3>
+
+<p>
+<b>Object:</b>
+<span id="det_label">None</span>
+</p>
+
+<p>
+<b>Confidence:</b>
+<span id="det_conf">0</span>
+</p>
+
+<p>
+<b>Position:</b>
+<span id="det_pos">None</span>
+</p>
+
+<br><br>
+
+<h3>Robot Movement</h3>
