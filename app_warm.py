@@ -4,7 +4,7 @@ import cv2
 import threading
 import time
 
-# 🔥 NEW (Servo)
+# Servo
 import board
 import busio
 from adafruit_pca9685 import PCA9685
@@ -13,30 +13,25 @@ app = Flask(__name__)
 
 # ---------------- CAN SETUP ----------------
 bus = can.interface.Bus(channel='can0', bustype='socketcan')
-
 control_data = [0, 0, 0, 0]
-last_sent_data = [0, 0, 0, 0]
 
-# ---------------- CAN SENDER THREAD ----------------
 def can_sender():
-    global control_data, last_sent_data
+    global control_data
+    SEND_INTERVAL = 0.02  # 50Hz
 
     while True:
-        if control_data != last_sent_data:
-            msg = can.Message(
-                arbitration_id=0x100,
-                data=control_data,
-                is_extended_id=False
-            )
+        msg = can.Message(
+            arbitration_id=0x100,
+            data=control_data,
+            is_extended_id=False
+        )
 
-            try:
-                bus.send(msg)
-                print("send", control_data)
-                last_sent_data = control_data.copy()
-            except can.CanError:
-                print("CAN buffer full")
+        try:
+            bus.send(msg, timeout=0.01)
+        except can.CanError:
+            print("CAN buffer full")
 
-        time.sleep(0.05)
+        time.sleep(SEND_INTERVAL)
 
 threading.Thread(target=can_sender, daemon=True).start()
 
@@ -65,7 +60,7 @@ def generate_frames():
         if frame_global is None:
             continue
 
-        ret, buffer = cv2.imencode('.jpg', frame_global, [int(cv2.IMWRITE_JPEG_QUALITY), 60])
+        _, buffer = cv2.imencode('.jpg', frame_global, [int(cv2.IMWRITE_JPEG_QUALITY), 60])
         frame = buffer.tobytes()
 
         yield (b'--frame\r\n'
@@ -74,36 +69,38 @@ def generate_frames():
 # ---------------- SERVO SETUP ----------------
 i2c = busio.I2C(board.SCL, board.SDA)
 pca = PCA9685(i2c)
-pca.frequency = 60
+pca.frequency = 50  # 🔥 better stability
 
 NUM_SERVOS = 5
-SERVO_CHANNELS = [4, 8, 9, 12, 13]   # base removed
+SERVO_CHANNELS = [4, 8, 9, 12, 13]
 
 current_positions = [375] * NUM_SERVOS
 
-STEP_DELAY = 0.003
-STEP_SIZE = 3
+# Initialize servos
+for i in range(NUM_SERVOS):
+    pca.channels[SERVO_CHANNELS[i]].duty_cycle = current_positions[i] * 16
 
-# Map angle → PWM
 def map_angle_to_pwm(angle):
     return int(150 + (angle / 180.0) * (600 - 150))
 
-# Smooth servo movement
+# 🔥 IMPROVED SMOOTH MOTION
 def move_servo_smooth(index, target_pwm):
     current_pwm = current_positions[index]
 
-    if target_pwm > current_pwm:
-        step_range = range(current_pwm, target_pwm, STEP_SIZE)
-    else:
-        step_range = range(current_pwm, target_pwm, -STEP_SIZE)
+    # Deadband (ignore tiny movements)
+    if abs(target_pwm - current_pwm) < 5:
+        return
 
-    for pos in step_range:
-        pca.channels[SERVO_CHANNELS[index]].duty_cycle = pos * 16
-        time.sleep(STEP_DELAY)
+    diff = target_pwm - current_pwm
+    steps = 20
+    step_size = diff / steps
+
+    for _ in range(steps):
+        current_pwm += step_size
+        pca.channels[SERVO_CHANNELS[index]].duty_cycle = int(current_pwm * 16)
+        time.sleep(0.01)
 
     current_positions[index] = target_pwm
-
-    print(f"Servo {index+1} -> {target_pwm}")
 
 # ---------------- ROUTES ----------------
 @app.route('/')
@@ -115,23 +112,19 @@ def video():
     return Response(generate_frames(),
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 
-# Existing robot control
 @app.route('/control', methods=['POST'])
 def control():
     global control_data
 
     data = request.form
-
     control_data = [
         int(data['ls']),
         int(data['ld']),
         int(data['rs']),
         int(data['rd'])
     ]
-
     return "OK"
 
-# 🔥 NEW Servo Control
 @app.route('/servo', methods=['POST'])
 def servo_control():
     data = request.form
