@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+    <title>Pi5 Robot Dashboard</title>
+
+    <style>
+
+        body {
+            background-color: #111;
+            color: white;
+            font-family: Arial;
+            text-align: center;
+        }
+
+        .card {
+
+            margin: 20px auto;
+            padding: 20px;
+            width: 700px;
+
+            background: #222;
+
+            border-radius: 10px;
+        }
+
+        img {
+
+            border: 3px solid white;
+            border-radius: 10px;
+        }
+
+        button {
+
+            width: 140px;
+            height: 50px;
+
+            margin: 5px;
+
+            font-size: 16px;
+
+            border: none;
+            border-radius: 8px;
+
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        button:hover {
+
+            background-color: #45a049;
+        }
+
+        input[type=range] {
+
+            width: 300px;
+        }
+
+    </style>
+
+</head>
+
+<body onmouseup="stop()" ontouchend="stop()">
+
+<h1>🤖 Pi5 Robot Dashboard</h1>
+
+<!-- MODE CONTROL -->
+<div class="card">
+
+    <h2>Mode Control</h2>
+
+    <button onclick="toggleAuto()">
+
+        Toggle Auto Mode
+
+    </button>
+
+    <p>
+
+        Current Mode:
+        <span id="mode_text">
+
+            MANUAL
+
+        </span>
+
+    </p>
+
+</div>
+
+<!-- CAMERA -->
+<div class="card">
+
+    <h2>🎥 Live Detection Stream</h2>
+
+    <img src="/video_feed" width="640">
+
+</div>
+
+<!-- DETECTION -->
+<div class="card">
+
+    <h2>🧠 Detection Info</h2>
+
+    <p>
+        Object:
+        <span id="label">None</span>
+    </p>
+
+    <p>
+        Confidence:
+        <span id="conf">0</span>
+    </p>
+
+</div>
+
+<!-- MOVEMENT -->
+<div class="card">
+
+    <h2>🚗 Robot Movement</h2>
+
+    <button
+        onmousedown="setControl(200,1,200,1)"
+        onmouseup="stop()"
+        ontouchstart="setControl(200,1,200,1)"
+        ontouchend="stop()">
+
+        Forward
+
+    </button>
+
+    <br><br>
+
+    <button
+        onmousedown="setControl(100,0,100,1)"
+        onmouseup="stop()"
+        ontouchstart="setControl(100,0,100,1)"
+        ontouchend="stop()">
+
+        Left
+
+    </button>
+
+    <button
+        onmousedown="setControl(100,1,100,0)"
+        onmouseup="stop()"
+        ontouchstart="setControl(100,1,100,0)"
+        ontouchend="stop()">
+
+        Right
+
+    </button>
+
+    <br><br>
+
+    <button
+        onmousedown="setControl(200,0,200,0)"
+        onmouseup="stop()"
+        ontouchstart="setControl(200,0,200,0)"
+        ontouchend="stop()">
+
+        Backward
+
+    </button>
+
+</div>
+
+<!-- ARM CONTROL -->
+<div class="card">
+
+    <h2>🦾 Arm Control</h2>
+
+    Servo 1:<br>
+    <input type="range" min="0" max="180"
+           value="90"
+           onchange="moveServo(1, this.value)">
+
+    <br><br>
+
+    Servo 2:<br>
+    <input type="range" min="0" max="180"
+           value="90"
+           onchange="moveServo(2, this.value)">
+
+    <br><br>
+
+    Servo 3:<br>
+    <input type="range" min="0" max="180"
+           value="90"
+           onchange="moveServo(3, this.value)">
+
+    <br><br>
+
+    Servo 4:<br>
+    <input type="range" min="0" max="180"
+           value="90"
+           onchange="moveServo(4, this.value)">
+
+    <br><br>
+
+    Servo 5:<br>
+    <input type="range" min="0" max="180"
+           value="90"
+           onchange="moveServo(5, this.value)">
+
+</div>
+
+<script>
+
+// ---------------- MOVEMENT ----------------
+function setControl(ls, ld, rs, rd) {
+
+    fetch('/control', {
+
+        method: 'POST',
+
+        headers: {
+            'Content-Type':
+            'application/x-www-form-urlencoded'
+        },
+
+        body:
+        `ls=${ls}&ld=${ld}&rs=${rs}&rd=${rd}`
+    });
+}
+
+function stop() {
+
+    setControl(0,0,0,0);
+}
+
+// ---------------- SERVO ----------------
+function moveServo(id, angle) {
+
+    fetch('/servo', {
+
+        method: 'POST',
+
+        headers: {
+            'Content-Type':
+            'application/x-www-form-urlencoded'
+        },
+
+        body:
+        `id=${id}&angle=${angle}`
+    });
+}
+
+// ---------------- AUTO MODE ----------------
+let autoMode = false;
+
+function toggleAuto() {
+
+    fetch('/toggle_auto', {
+
+        method: 'POST'
+    })
+
+    .then(response => response.json())
+
+    .then(data => {
+
+        autoMode = data.auto_mode;
+
+        document.getElementById(
+            "mode_text"
+        ).innerText = autoMode
+            ? "AUTO"
+            : "MANUAL";
+    });
+}
+
+// ---------------- DETECTION DISPLAY ----------------
+setInterval(() => {
+
+    fetch('/get_detection')
+
+    .then(response => response.json())
+
+    .then(data => {
+
+        document.getElementById(
+            "label"
+        ).innerText = data.label;
+
+        document.getElementById(
+            "conf"
+        ).innerText = data.confidence;
+    });
+
+}, 300);
+
+</script>
+
+</body>
+</html>
