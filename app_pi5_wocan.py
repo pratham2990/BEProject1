@@ -5,36 +5,71 @@ from flask import jsonify
 from flask import request
 
 from ultralytics import YOLO
-from picamera2 import Picamera2
 
 import cv2
 import time
 import threading
 
-# ---------------- GPIO MOTOR ----------------
+# =========================================================
+# GPIO MOTOR
+# =========================================================
 from gpiozero import Motor
 
-# ---------------- SERVO IMPORTS ----------------
+# =========================================================
+# SERVO IMPORTS
+# =========================================================
 import board
 import busio
 
 from adafruit_pca9685 import PCA9685
 
-# ---------------- APP ----------------
+# =========================================================
+# APP
+# =========================================================
 app = Flask(__name__)
 
-# ---------------- MODEL ----------------
+# =========================================================
+# MODEL
+# =========================================================
 model = YOLO("best.pt")
 
-# ---------------- CAMERA ----------------
-picam2 = Picamera2()
-
-config = picam2.create_preview_configuration(
-    main={"size": (640, 480)}
+# =========================================================
+# USB CAMERA
+# =========================================================
+camera = cv2.VideoCapture(
+    0,
+    cv2.CAP_V4L2
 )
 
-picam2.configure(config)
-picam2.start()
+# LOWER LATENCY
+camera.set(
+    cv2.CAP_PROP_BUFFERSIZE,
+    1
+)
+
+# RESOLUTION
+camera.set(
+    cv2.CAP_PROP_FRAME_WIDTH,
+    640
+)
+
+camera.set(
+    cv2.CAP_PROP_FRAME_HEIGHT,
+    480
+)
+
+# FPS
+camera.set(
+    cv2.CAP_PROP_FPS,
+    30
+)
+
+# =========================================================
+# FRAME BUFFERS
+# =========================================================
+frame_global = None
+
+annotated_global = None
 
 # =========================================================
 # MOTOR SETUP (L298N)
@@ -98,7 +133,9 @@ detection_data = {
     "width": 0,
     "height": 0,
 
-    "position": "NONE"
+    "position": "NONE",
+
+    "fps": 0
 }
 
 # =========================================================
@@ -119,6 +156,7 @@ def move_backward(speed=0.7):
     left_motor.backward(speed)
     right_motor.backward(speed)
 
+# FIXED LEFT/RIGHT
 def turn_left(speed=0.6):
 
     left_motor.forward(speed)
@@ -150,7 +188,6 @@ def move_servo_smooth(
 
     current_pwm = current_positions[index]
 
-    # Deadband
     if abs(target_pwm - current_pwm) < 5:
         return
 
@@ -173,73 +210,62 @@ def move_servo_smooth(
     current_positions[index] = target_pwm
 
 # =========================================================
-# AUTO FOLLOW THREAD
+# CAMERA THREAD
 # =========================================================
-def auto_follow_loop():
+def camera_loop():
 
-    global auto_mode
-    global detection_data
+    global frame_global
 
     while True:
 
-        if auto_mode:
+        try:
 
-            position = detection_data["position"]
+            success, frame = camera.read()
 
-            width = detection_data["width"]
+            if success:
 
-            # ---------------- LEFT ----------------
-            if position == "LEFT":
+                frame_global = frame
 
-                turn_left(0.5)
-
-            # ---------------- RIGHT ----------------
-            elif position == "RIGHT":
-
-                turn_right(0.5)
-
-            # ---------------- CENTER ----------------
-            elif position == "CENTER":
-
-                if width < 220:
-
-                    move_forward(0.6)
-
-                else:
-
-                    stop_robot()
-
-            # ---------------- NONE ----------------
             else:
 
-                stop_robot()
+                print("Camera Read Failed")
 
-        time.sleep(0.05)
+                time.sleep(0.1)
+
+        except Exception as e:
+
+            print("Camera Error:", e)
+
+            time.sleep(1)
 
 threading.Thread(
-    target=auto_follow_loop,
+    target=camera_loop,
     daemon=True
 ).start()
 
 # =========================================================
-# VIDEO STREAM
+# DETECTION THREAD
 # =========================================================
-def generate_frames():
+def detection_loop():
 
+    global frame_global
+    global annotated_global
     global detection_data
+
+    prev_time = time.time()
 
     while True:
 
-        # Capture frame
-        frame = picam2.capture_array()
+        if frame_global is None:
 
-        # FIX COLORS
-        frame = cv2.cvtColor(
-            frame,
-            cv2.COLOR_RGB2BGR
-        )
+            time.sleep(0.01)
+            continue
 
-        # YOLO detection
+        frame = frame_global.copy()
+
+        # =================================================
+        # YOLO DETECTION
+        # =================================================
         results = model.predict(
             frame,
             imgsz=320,
@@ -249,7 +275,6 @@ def generate_frames():
 
         found = False
 
-        # Process detections
         for r in results:
 
             boxes = r.boxes
@@ -266,12 +291,10 @@ def generate_frames():
 
                 x1, y1, x2, y2 = box.xyxy[0]
 
-                # Object center
                 x_center = int((x1 + x2) / 2)
 
                 y_center = int((y1 + y2) / 2)
 
-                # Object size
                 width = int(x2 - x1)
 
                 height = int(y2 - y1)
@@ -289,6 +312,15 @@ def generate_frames():
 
                     position = "CENTER"
 
+                # FPS
+                curr_time = time.time()
+
+                fps = int(
+                    1 / (curr_time - prev_time)
+                )
+
+                prev_time = curr_time
+
                 detection_data = {
 
                     "label": label,
@@ -301,7 +333,9 @@ def generate_frames():
                     "width": width,
                     "height": height,
 
-                    "position": position
+                    "position": position,
+
+                    "fps": fps
                 }
 
         if not found:
@@ -317,13 +351,17 @@ def generate_frames():
                 "width": 0,
                 "height": 0,
 
-                "position": "NONE"
+                "position": "NONE",
+
+                "fps": detection_data["fps"]
             }
 
-        # Draw detections
+        # =================================================
+        # DRAW DETECTIONS
+        # =================================================
         annotated = results[0].plot()
 
-        # ---------------- CENTER GUIDES ----------------
+        # CENTER LINE
         cv2.line(
             annotated,
             (320, 0),
@@ -332,6 +370,7 @@ def generate_frames():
             2
         )
 
+        # LEFT BOUNDARY
         cv2.line(
             annotated,
             (220, 0),
@@ -340,6 +379,7 @@ def generate_frames():
             1
         )
 
+        # RIGHT BOUNDARY
         cv2.line(
             annotated,
             (420, 0),
@@ -348,15 +388,98 @@ def generate_frames():
             1
         )
 
-        # Encode frame
+        # FPS DISPLAY
+        cv2.putText(
+            annotated,
+            f"FPS: {detection_data['fps']}",
+            (20, 40),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            1,
+            (0, 255, 0),
+            2
+        )
+
+        annotated_global = annotated
+
+threading.Thread(
+    target=detection_loop,
+    daemon=True
+).start()
+
+# =========================================================
+# AUTO FOLLOW THREAD
+# =========================================================
+def auto_follow_loop():
+
+    global auto_mode
+    global detection_data
+
+    while True:
+
+        if auto_mode:
+
+            position = detection_data["position"]
+
+            width = detection_data["width"]
+
+            # LEFT
+            if position == "LEFT":
+
+                turn_left(0.45)
+
+            # RIGHT
+            elif position == "RIGHT":
+
+                turn_right(0.45)
+
+            # CENTER
+            elif position == "CENTER":
+
+                if width < 220:
+
+                    move_forward(0.55)
+
+                else:
+
+                    stop_robot()
+
+            # NONE
+            else:
+
+                stop_robot()
+
+        time.sleep(0.03)
+
+threading.Thread(
+    target=auto_follow_loop,
+    daemon=True
+).start()
+
+# =========================================================
+# VIDEO STREAM
+# =========================================================
+def generate_frames():
+
+    global annotated_global
+
+    while True:
+
+        if annotated_global is None:
+
+            time.sleep(0.01)
+            continue
+
         _, buffer = cv2.imencode(
             '.jpg',
-            annotated
+            annotated_global,
+            [
+                int(cv2.IMWRITE_JPEG_QUALITY),
+                70
+            ]
         )
 
         frame_bytes = buffer.tobytes()
 
-        # Stream frame
         yield (
             b'--frame\r\n'
             b'Content-Type: image/jpeg\r\n\r\n'
@@ -396,7 +519,6 @@ def control():
 
     global auto_mode
 
-    # Ignore manual commands in AUTO mode
     if auto_mode:
         return "AUTO MODE"
 
