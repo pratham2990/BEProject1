@@ -1,3 +1,6 @@
+# Final `app.py`
+
+```python
 from flask import Flask
 from flask import render_template
 from flask import Response
@@ -47,18 +50,17 @@ camera.set(
     1
 )
 
-# RESOLUTION
+# LOWER RESOLUTION = HIGHER FPS
 camera.set(
     cv2.CAP_PROP_FRAME_WIDTH,
-    640
+    320
 )
 
 camera.set(
     cv2.CAP_PROP_FRAME_HEIGHT,
-    480
+    240
 )
 
-# FPS
 camera.set(
     cv2.CAP_PROP_FPS,
     30
@@ -68,21 +70,17 @@ camera.set(
 # FRAME BUFFERS
 # =========================================================
 frame_global = None
-
 annotated_global = None
 
 # =========================================================
 # MOTOR SETUP (L298N)
 # =========================================================
-
-# LEFT MOTOR
 left_motor = Motor(
     forward=17,
     backward=27,
     enable=18
 )
 
-# RIGHT MOTOR
 right_motor = Motor(
     forward=22,
     backward=23,
@@ -112,7 +110,6 @@ SERVO_CHANNELS = [4, 8, 9, 12, 13]
 
 current_positions = [375] * NUM_SERVOS
 
-# Initialize servos
 for i in range(NUM_SERVOS):
 
     pca.channels[
@@ -135,7 +132,9 @@ detection_data = {
 
     "position": "NONE",
 
-    "fps": 0
+    "fps": 0,
+
+    "robot_status": "IDLE"
 }
 
 # =========================================================
@@ -146,21 +145,24 @@ def stop_robot():
     left_motor.stop()
     right_motor.stop()
 
+
 def move_forward(speed=0.7):
 
     left_motor.forward(speed)
     right_motor.forward(speed)
+
 
 def move_backward(speed=0.7):
 
     left_motor.backward(speed)
     right_motor.backward(speed)
 
-# FIXED LEFT/RIGHT
+
 def turn_left(speed=0.6):
 
     left_motor.forward(speed)
     right_motor.backward(speed)
+
 
 def turn_right(speed=0.6):
 
@@ -264,13 +266,19 @@ def detection_loop():
         frame = frame_global.copy()
 
         # =================================================
-        # YOLO DETECTION
+        # SMALLER FRAME = HIGHER FPS
         # =================================================
-        results = model.predict(
+        small_frame = cv2.resize(
             frame,
-            imgsz=320,
-            conf=0.5,
-            verbose=False
+            (320, 240)
+        )
+
+        results = model.predict(
+            small_frame,
+            imgsz=256,
+            conf=0.45,
+            verbose=False,
+            device='cpu'
         )
 
         found = False
@@ -292,19 +300,16 @@ def detection_loop():
                 x1, y1, x2, y2 = box.xyxy[0]
 
                 x_center = int((x1 + x2) / 2)
-
                 y_center = int((y1 + y2) / 2)
 
                 width = int(x2 - x1)
-
                 height = int(y2 - y1)
 
-                # LEFT / CENTER / RIGHT
-                if x_center < 220:
+                if x_center < 110:
 
                     position = "LEFT"
 
-                elif x_center > 420:
+                elif x_center > 210:
 
                     position = "RIGHT"
 
@@ -312,7 +317,6 @@ def detection_loop():
 
                     position = "CENTER"
 
-                # FPS
                 curr_time = time.time()
 
                 fps = int(
@@ -321,10 +325,9 @@ def detection_loop():
 
                 prev_time = curr_time
 
-                detection_data = {
+                detection_data.update({
 
                     "label": label,
-
                     "confidence": round(conf, 2),
 
                     "x": x_center,
@@ -336,11 +339,11 @@ def detection_loop():
                     "position": position,
 
                     "fps": fps
-                }
+                })
 
         if not found:
 
-            detection_data = {
+            detection_data.update({
 
                 "label": "None",
                 "confidence": 0,
@@ -351,51 +354,52 @@ def detection_loop():
                 "width": 0,
                 "height": 0,
 
-                "position": "NONE",
+                "position": "NONE"
+            })
 
-                "fps": detection_data["fps"]
-            }
-
-        # =================================================
-        # DRAW DETECTIONS
-        # =================================================
         annotated = results[0].plot()
 
-        # CENTER LINE
         cv2.line(
             annotated,
-            (320, 0),
-            (320, 480),
+            (160, 0),
+            (160, 240),
             (0, 255, 0),
             2
         )
 
-        # LEFT BOUNDARY
         cv2.line(
             annotated,
-            (220, 0),
-            (220, 480),
+            (110, 0),
+            (110, 240),
             (255, 0, 0),
             1
         )
 
-        # RIGHT BOUNDARY
         cv2.line(
             annotated,
-            (420, 0),
-            (420, 480),
+            (210, 0),
+            (210, 240),
             (255, 0, 0),
             1
         )
 
-        # FPS DISPLAY
         cv2.putText(
             annotated,
             f"FPS: {detection_data['fps']}",
-            (20, 40),
+            (10, 25),
             cv2.FONT_HERSHEY_SIMPLEX,
-            1,
+            0.7,
             (0, 255, 0),
+            2
+        )
+
+        cv2.putText(
+            annotated,
+            detection_data['robot_status'],
+            (10, 55),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.7,
+            (0, 255, 255),
             2
         )
 
@@ -425,28 +429,54 @@ def auto_follow_loop():
             # LEFT
             if position == "LEFT":
 
+                detection_data["robot_status"] = (
+                    "TURNING LEFT"
+                )
+
                 turn_left(0.45)
 
             # RIGHT
             elif position == "RIGHT":
+
+                detection_data["robot_status"] = (
+                    "TURNING RIGHT"
+                )
 
                 turn_right(0.45)
 
             # CENTER
             elif position == "CENTER":
 
-                if width < 220:
+                if width < 120:
+
+                    detection_data["robot_status"] = (
+                        "MOVING TO BOTTLE"
+                    )
 
                     move_forward(0.55)
 
                 else:
+
+                    detection_data["robot_status"] = (
+                        "BOTTLE REACHED"
+                    )
 
                     stop_robot()
 
             # NONE
             else:
 
+                detection_data["robot_status"] = (
+                    "SEARCHING"
+                )
+
                 stop_robot()
+
+        else:
+
+            detection_data["robot_status"] = (
+                "MANUAL MODE"
+            )
 
         time.sleep(0.03)
 
@@ -474,7 +504,7 @@ def generate_frames():
             annotated_global,
             [
                 int(cv2.IMWRITE_JPEG_QUALITY),
-                70
+                65
             ]
         )
 
@@ -623,3 +653,341 @@ if __name__ == '__main__':
         port=5000,
         threaded=True
     )
+```
+
+---
+
+# Final `templates/index.html`
+
+```html
+<!DOCTYPE html>
+<html>
+
+<head>
+
+    <title>Pi5 Robot Dashboard</title>
+
+    <style>
+
+        body {
+            background-color: #111;
+            color: white;
+            font-family: Arial;
+            text-align: center;
+        }
+
+        .card {
+
+            margin: 20px auto;
+            padding: 20px;
+            width: 700px;
+
+            background: #222;
+
+            border-radius: 10px;
+        }
+
+        img {
+
+            border: 3px solid white;
+            border-radius: 10px;
+        }
+
+        button {
+
+            width: 140px;
+            height: 50px;
+
+            margin: 5px;
+
+            font-size: 16px;
+
+            border: none;
+            border-radius: 8px;
+
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        button:hover {
+
+            background-color: #45a049;
+        }
+
+        input[type=range] {
+
+            width: 300px;
+        }
+
+    </style>
+
+</head>
+
+<body onmouseup="stop()" ontouchend="stop()">
+
+<h1>🤖 Pi5 Robot Dashboard</h1>
+
+<div class="card">
+
+    <h2>Mode Control</h2>
+
+    <button onclick="toggleAuto()">
+
+        Toggle Auto Mode
+
+    </button>
+
+    <p>
+
+        Current Mode:
+        <span id="mode_text">
+
+            MANUAL
+
+        </span>
+
+    </p>
+
+</div>
+
+<div class="card">
+
+    <h2>🎥 Live Detection Stream</h2>
+
+    <img src="/video_feed" width="640">
+
+</div>
+
+<div class="card">
+
+    <h2>🧠 Detection Info</h2>
+
+    <p>Object: <span id="label">None</span></p>
+
+    <p>Confidence: <span id="conf">0</span></p>
+
+    <p>Position: <span id="position">NONE</span></p>
+
+    <p>X: <span id="x_axis">0</span></p>
+
+    <p>Y: <span id="y_axis">0</span></p>
+
+    <p>Width: <span id="width">0</span></p>
+
+    <p>Height: <span id="height">0</span></p>
+
+    <p>FPS: <span id="fps">0</span></p>
+
+    <p>
+        Robot Status:
+        <span id="robot_status">
+            IDLE
+        </span>
+    </p>
+
+</div>
+
+<div class="card">
+
+    <h2>🚗 Robot Movement</h2>
+
+    <button
+        onmousedown="setControl(200,1,200,1)"
+        onmouseup="stop()"
+        ontouchstart="setControl(200,1,200,1)"
+        ontouchend="stop()">
+
+        Forward
+
+    </button>
+
+    <br><br>
+
+    <button
+        onmousedown="setControl(150,0,150,1)"
+        onmouseup="stop()"
+        ontouchstart="setControl(150,0,150,1)"
+        ontouchend="stop()">
+
+        Left
+
+    </button>
+
+    <button
+        onmousedown="setControl(150,1,150,0)"
+        onmouseup="stop()"
+        ontouchstart="setControl(150,1,150,0)"
+        ontouchend="stop()">
+
+        Right
+
+    </button>
+
+    <br><br>
+
+    <button
+        onmousedown="setControl(200,0,200,0)"
+        onmouseup="stop()"
+        ontouchstart="setControl(200,0,200,0)"
+        ontouchend="stop()">
+
+        Backward
+
+    </button>
+
+</div>
+
+<div class="card">
+
+    <h2>🦾 Arm Control</h2>
+
+    Servo 1:<br>
+    <input type="range" min="0" max="180"
+           value="90"
+           onchange="moveServo(1, this.value)">
+
+    <br><br>
+
+    Servo 2:<br>
+    <input type="range" min="0" max="180"
+           value="90"
+           onchange="moveServo(2, this.value)">
+
+    <br><br>
+
+    Servo 3:<br>
+    <input type="range" min="0" max="180"
+           value="90"
+           onchange="moveServo(3, this.value)">
+
+    <br><br>
+
+    Servo 4:<br>
+    <input type="range" min="0" max="180"
+           value="90"
+           onchange="moveServo(4, this.value)">
+
+    <br><br>
+
+    Servo 5:<br>
+    <input type="range" min="0" max="180"
+           value="90"
+           onchange="moveServo(5, this.value)">
+
+</div>
+
+<script>
+
+function setControl(ls, ld, rs, rd) {
+
+    fetch('/control', {
+
+        method: 'POST',
+
+        headers: {
+            'Content-Type':
+            'application/x-www-form-urlencoded'
+        },
+
+        body:
+        `ls=${ls}&ld=${ld}&rs=${rs}&rd=${rd}`
+    });
+}
+
+function stop() {
+
+    setControl(0,0,0,0);
+}
+
+function moveServo(id, angle) {
+
+    fetch('/servo', {
+
+        method: 'POST',
+
+        headers: {
+            'Content-Type':
+            'application/x-www-form-urlencoded'
+        },
+
+        body:
+        `id=${id}&angle=${angle}`
+    });
+}
+
+let autoMode = false;
+
+function toggleAuto() {
+
+    fetch('/toggle_auto', {
+
+        method: 'POST'
+    })
+
+    .then(response => response.json())
+
+    .then(data => {
+
+        autoMode = data.auto_mode;
+
+        document.getElementById(
+            "mode_text"
+        ).innerText = autoMode
+            ? "AUTO"
+            : "MANUAL";
+    });
+}
+
+setInterval(() => {
+
+    fetch('/get_detection')
+
+    .then(response => response.json())
+
+    .then(data => {
+
+        document.getElementById(
+            "label"
+        ).innerText = data.label;
+
+        document.getElementById(
+            "conf"
+        ).innerText = data.confidence;
+
+        document.getElementById(
+            "position"
+        ).innerText = data.position;
+
+        document.getElementById(
+            "x_axis"
+        ).innerText = data.x;
+
+        document.getElementById(
+            "y_axis"
+        ).innerText = data.y;
+
+        document.getElementById(
+            "width"
+        ).innerText = data.width;
+
+        document.getElementById(
+            "height"
+        ).innerText = data.height;
+
+        document.getElementById(
+            "fps"
+        ).innerText = data.fps;
+
+        document.getElementById(
+            "robot_status"
+        ).innerText = data.robot_status;
+    });
+
+}, 200);
+
+</script>
+
+</body>
+</html>
+```
+
