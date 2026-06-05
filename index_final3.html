@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+    <title>Pi5 Robot Dashboard</title>
+
+    <style>
+
+        body {
+            background-color: #111;
+            color: white;
+            font-family: Arial;
+            text-align: center;
+        }
+
+        .card {
+
+            margin: 20px auto;
+            padding: 20px;
+            width: 700px;
+
+            background: #222;
+
+            border-radius: 10px;
+        }
+
+        img {
+
+            border: 3px solid white;
+            border-radius: 10px;
+        }
+
+        button {
+
+            width: 140px;
+            height: 50px;
+
+            margin: 5px;
+
+            font-size: 16px;
+
+            border: none;
+            border-radius: 8px;
+
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        button:hover {
+
+            background-color: #45a049;
+        }
+
+        input[type=range] {
+
+            width: 300px;
+        }
+
+        .status {
+
+            font-size: 22px;
+            font-weight: bold;
+            color: #00ff88;
+        }
+
+        .danger {
+
+            background-color: red !important;
+        }
+
+    </style>
+
+</head>
+
+<body onmouseup="stop()" ontouchend="stop()">
+
+<h1>🤖 Pi5 Robot Dashboard</h1>
+
+<!-- MODE CONTROL -->
+<div class="card">
+
+    <h2>Mode Control</h2>
+
+    <button onclick="toggleAuto()">
+        Toggle Auto Mode
+    </button>
+
+    <br><br>
+
+    <button
+        class="danger"
+        onclick="emergencyStop()">
+
+        EMERGENCY STOP
+
+    </button>
+
+    <p>
+
+        Current Mode:
+
+        <span id="mode_text">
+
+            MANUAL
+
+        </span>
+
+    </p>
+
+</div>
+
+<!-- CAMERA -->
+<div class="card">
+
+    <h2>🎥 Live Detection Stream</h2>
+
+    <img src="/video_feed" width="640">
+
+</div>
+
+<!-- DETECTION INFO -->
+<div class="card">
+
+    <h2>🧠 Detection Information</h2>
+
+    <p>
+        Object:
+        <span id="label">None</span>
+    </p>
+
+    <p>
+        Confidence:
+        <span id="conf">0</span>
+    </p>
+
+    <p>
+        Position:
+        <span id="position">NONE</span>
+    </p>
+
+    <p>
+        X Coordinate:
+        <span id="x_axis">0</span>
+    </p>
+
+    <p>
+        Y Coordinate:
+        <span id="y_axis">0</span>
+    </p>
+
+    <p>
+        Width:
+        <span id="width">0</span>
+    </p>
+
+    <p>
+        Height:
+        <span id="height">0</span>
+    </p>
+
+    <p>
+        Distance:
+        <span id="distance">0</span> cm
+    </p>
+
+    <p>
+        FPS:
+        <span id="fps">0</span>
+    </p>
+
+    <p>
+        CPU Temp:
+        <span id="cpu_temp">0</span> °C
+    </p>
+
+    <p class="status">
+
+        Robot Status:
+
+        <span id="robot_status">
+
+            MANUAL MODE
+
+        </span>
+
+    </p>
+
+</div>
+
+<!-- MOVEMENT -->
+<div class="card">
+
+    <h2>🚗 Robot Movement</h2>
+
+    <button
+        onmousedown="setControl(100,0,100,0)"
+        onmouseup="stop()"
+        ontouchstart="setControl(100,0,100,0)"
+        ontouchend="stop()">
+
+        Forward
+
+    </button>
+
+    <br><br>
+
+    <button
+        onmousedown="setControl(100,0,100,1)"
+        onmouseup="stop()"
+        ontouchstart="setControl(100,0,100,1)"
+        ontouchend="stop()">
+
+        Left
+
+    </button>
+
+    <button
+        onmousedown="setControl(100,1,100,0)"
+        onmouseup="stop()"
+        ontouchstart="setControl(100,1,100,0)"
+        ontouchend="stop()">
+
+        Right
+
+    </button>
+
+    <br><br>
+
+    <button
+        onmousedown="setControl(100,1,100,1)"
+        onmouseup="stop()"
+        ontouchstart="setControl(100,1,100,1)"
+        ontouchend="stop()">
+
+        Backward
+
+    </button>
+
+</div>
+
+<!-- ARM CONTROL -->
+<div class="card">
+
+    <h2>🦾 Arm Control</h2>
+
+    <button onclick="loadPreset('home')">
+
+        HOME
+
+    </button>
+
+    <button onclick="loadPreset('pickup')">
+
+        PICKUP
+
+    </button>
+    
+    <button
+onclick="pickBottle()"
+style="background:#ff9800;">
+
+PICK BOTTLE
+
+</button>
+
+    <br><br>
+
+    Servo 1 (Base):
+    <span id="servo1_val">90</span>°
+    <br>
+
+    <input type="range"
+           min="0"
+           max="180"
+           value="90"
+           onchange="moveServo(1,this.value)">
+
+    <br><br>
+
+    Servo 2 (Shoulder):
+    <span id="servo2_val">90</span>°
+    <br>
+
+    <input type="range"
+           min="0"
+           max="180"
+           value="90"
+           onchange="moveServo(2,this.value)">
+
+    <br><br>
+
+    Servo 3 (Elbow):
+    <span id="servo3_val">90</span>°
+    <br>
+
+    <input type="range"
+           min="0"
+           max="180"
+           value="90"
+           onchange="moveServo(3,this.value)">
+
+    <br><br>
+
+    Servo 4 (Wrist):
+    <span id="servo4_val">90</span>°
+    <br>
+
+    <input type="range"
+           min="0"
+           max="180"
+           value="90"
+           onchange="moveServo(4,this.value)">
+
+    <br><br>
+
+    Servo 5 (Gripper):
+    <span id="servo5_val">90</span>°
+    <br>
+
+    <input type="range"
+           min="0"
+           max="180"
+           value="90"
+           onchange="moveServo(5,this.value)">
+
+</div>
+
+<script>
+
+// =====================================================
+// MOVEMENT
+// =====================================================
+function setControl(ls, ld, rs, rd) {
+
+    fetch('/control', {
+
+        method: 'POST',
+
+        headers: {
+            'Content-Type':
+            'application/x-www-form-urlencoded'
+        },
+
+        body:
+        `ls=${ls}&ld=${ld}&rs=${rs}&rd=${rd}`
+    });
+}
+
+function stop() {
+
+    setControl(0,0,0,0);
+}
+
+// =====================================================
+// SERVO
+// =====================================================
+function moveServo(id, angle) {
+
+    fetch('/servo', {
+
+        method: 'POST',
+
+        headers: {
+            'Content-Type':
+            'application/x-www-form-urlencoded'
+        },
+
+        body:
+        `id=${id}&angle=${angle}`
+    });
+}
+
+// =====================================================
+// AUTO MODE
+// =====================================================
+let autoMode = false;
+
+function toggleAuto() {
+
+    fetch('/toggle_auto', {
+
+        method: 'POST'
+
+    })
+
+    .then(response => response.json())
+
+    .then(data => {
+
+        autoMode = data.auto_mode;
+
+        document.getElementById(
+            "mode_text"
+        ).innerText = autoMode
+            ? "AUTO"
+            : "MANUAL";
+    });
+}
+
+// =====================================================
+// EMERGENCY STOP
+// =====================================================
+function emergencyStop(){
+
+    fetch('/emergency_stop',{
+
+        method:'POST'
+    });
+
+    document.getElementById(
+        "mode_text"
+    ).innerText = "MANUAL";
+}
+
+// =====================================================
+// PRESETS
+// =====================================================
+function loadPreset(name){
+
+    fetch('/preset/' + name);
+}
+
+// =====================================================
+// PICK BOTTLE
+// =====================================================
+function pickBottle(){
+
+    fetch('/pick_bottle',{
+
+        method:'POST'
+    });
+}
+
+// =====================================================
+// DETECTION DISPLAY
+// =====================================================
+setInterval(() => {
+
+    fetch('/get_detection')
+
+    .then(response => response.json())
+
+    .then(data => {
+
+        document.getElementById("label").innerText = data.label;
+        document.getElementById("conf").innerText = data.confidence;
+        document.getElementById("position").innerText = data.position;
+        document.getElementById("x_axis").innerText = data.x;
+        document.getElementById("y_axis").innerText = data.y;
+        document.getElementById("width").innerText = data.width;
+        document.getElementById("height").innerText = data.height;
+        document.getElementById("distance").innerText = data.distance;
+        document.getElementById("fps").innerText = data.fps;
+        document.getElementById("robot_status").innerText =
+            data.robot_status;
+    });
+
+}, 200);
+
+// =====================================================
+// SERVO STATUS
+// =====================================================
+setInterval(() => {
+
+    fetch('/get_servos')
+
+    .then(response => response.json())
+
+    .then(data => {
+
+        document.getElementById("servo1_val").innerText = data.servo1;
+        document.getElementById("servo2_val").innerText = data.servo2;
+        document.getElementById("servo3_val").innerText = data.servo3;
+        document.getElementById("servo4_val").innerText = data.servo4;
+        document.getElementById("servo5_val").innerText = data.servo5;
+
+    });
+
+}, 200);
+
+// =====================================================
+// SYSTEM INFO
+// =====================================================
+setInterval(() => {
+
+    fetch('/get_system')
+
+    .then(response => response.json())
+
+    .then(data => {
+
+        document.getElementById(
+            "cpu_temp"
+        ).innerText =
+            data.cpu_temp;
+
+    });
+
+}, 2000);
+
+</script>
+
+</body>
+</html>
