@@ -1,505 +1,776 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="en">
 <head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Pi5 Robot</title>
+<style>
+  :root {
+    --bg:       #0d0f12;
+    --surface:  #161a1f;
+    --surface2:  #1e2329;
+    --border:   #2a3040;
+    --border2:  #364050;
+    --accent:   #3b8ef3;
+    --accent2:  #2270d4;
+    --green:    #22c55e;
+    --amber:    #f59e0b;
+    --red:      #ef4444;
+    --text:     #e8edf5;
+    --text2:    #8a95a8;
+    --text3:    #4e5a6b;
+    --radius:   12px;
+    --radius-sm:8px;
+  }
 
-    <title>Pi5 Robot Dashboard</title>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
-    <style>
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
 
-        body {
-            background-color: #111;
-            color: white;
-            font-family: Arial;
-            text-align: center;
-        }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
+    font-size: 13px;
+    user-select: none;
+    -webkit-user-select: none;
+  }
 
-        .card {
+  .topbar {
+    height: 49px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+  .topbar-logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: .01em;
+    color: var(--text);
+  }
+  .logo-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 6px var(--accent);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
 
-            margin: 20px auto;
-            padding: 20px;
-            width: 700px;
+  .topbar-chips { display: flex; gap: 6px; align-items: center; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px; font-weight: 500;
+    border: 1px solid var(--border2);
+    background: var(--surface2);
+    color: var(--text2);
+    white-space: nowrap;
+  }
+  .chip.ok   { border-color: #166534; background: #052e16; color: var(--green); }
+  .chip.info { border-color: #1d4ed8; background: #0c1e4a; color: var(--accent); }
+  .chip.warn { border-color: #92400e; background: #2d1a02; color: var(--amber); }
+  .chip.danger { border-color: #7f1d1d; background: #2d0a0a; color: var(--red); }
+  .chip-dot {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: currentColor;
+    animation: pulse 1.4s infinite;
+  }
 
-            background: #222;
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 350px;
+    grid-template-rows: minmax(0, 1fr) auto;
+    gap: 8px;
+    padding: 8px;
+    height: calc(100vh - 49px);
+    overflow: hidden;
+  }
 
-            border-radius: 10px;
-        }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 0;
+  }
 
-        img {
+  .card-title {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--text3);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 0 0 auto;
+  }
+  .card-title::before {
+    content: '';
+    width: 2px; height: 10px;
+    background: var(--accent);
+    border-radius: 2px;
+    display: inline-block;
+  }
 
-            border: 3px solid white;
-            border-radius: 10px;
-        }
+  .cam-card {
+    grid-row: 1;
+    grid-column: 1;
+    min-height: 0;
+  }
+  .cam-shell {
+    background: #080a0c;
+    border-radius: var(--radius-sm);
+    aspect-ratio: 16/9;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+    flex: 1;
+    min-height: 0;
+  }
+  .cam-shell img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+  }
+  .cam-corner {
+    position: absolute;
+    width: 16px; height: 16px;
+    border-color: var(--accent);
+    border-style: solid;
+    opacity: .7;
+  }
+  .cam-corner.tl { top:8px; left:8px;  border-width: 2px 0 0 2px; border-radius: 4px 0 0 0; }
+  .cam-corner.tr { top:8px; right:8px; border-width: 2px 2px 0 0; border-radius: 0 4px 0 0; }
+  .cam-corner.bl { bottom:8px; left:8px;  border-width: 0 0 2px 2px; border-radius: 0 0 0 4px; }
+  .cam-corner.br { bottom:8px; right:8px; border-width: 0 2px 2px 0; border-radius: 0 0 4px 0; }
+  .cam-rec {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: .1em;
+    color: var(--red);
+    z-index: 2;
+  }
+  .cam-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    color: var(--text3);
+    z-index: 1;
+  }
+  .cam-placeholder svg { width: 28px; height: 28px; stroke: currentColor; fill: none; stroke-width: 1.5; }
+  .cam-placeholder span { font-size: 10px; letter-spacing: .05em; }
 
-        button {
+  .cam-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    flex: 0 0 auto;
+  }
+  .cstat {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 6px 8px;
+  }
+  .cstat-label { font-size: 9px; color: var(--text3); font-weight: 500; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 2px; }
+  .cstat-val   { font-size: 13px; font-weight: 600; color: var(--text); }
+  .cstat-val.ok   { color: var(--green); }
+  .cstat-val.info { color: var(--accent); }
+  .cstat-val.warn { color: var(--amber); }
 
-            width: 140px;
-            height: 50px;
+  .det-card {
+    grid-row: 2;
+    grid-column: 1;
+    min-height: 0;
+  }
+  .det-grid {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr 1fr 1fr 1fr;
+    gap: 6px;
+  }
+  .det-chip {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 7px 10px;
+  }
+  .det-label { font-size: 9px; color: var(--text3); font-weight: 500; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 3px; }
+  .det-val   { font-size: 13px; font-weight: 600; color: var(--text); }
+  .det-val.ok   { color: var(--green); }
+  .det-val.info { color: var(--accent); }
 
-            margin: 5px;
+  .right-col {
+    grid-column: 2;
+    grid-row: 1 / 3;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 0;
+  }
 
-            font-size: 16px;
+  .dpad {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+  .dp {
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius);
+    border: 1px solid var(--border2);
+    background: var(--surface2);
+    color: var(--text2);
+    cursor: pointer;
+    font-size: 18px;
+    transition: background .08s, border-color .08s, color .08s, transform .06s;
+    touch-action: none;
+  }
+  .dp:active, .dp.on {
+    background: rgba(59,142,243,.15);
+    border-color: var(--accent);
+    color: var(--accent);
+    transform: scale(.95);
+  }
+  .dp.empty  { background: transparent; border: none; cursor: default; pointer-events: none; }
+  .dp.center { background: var(--bg); border-color: var(--border); cursor: default; pointer-events: none; font-size: 10px; color: var(--text3); }
 
-            border: none;
-            border-radius: 8px;
+  .action-btns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  .abtn {
+    padding: 10px 6px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border2);
+    background: var(--surface2);
+    color: var(--text2);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    transition: opacity .1s, transform .06s;
+  }
+  .abtn:active { transform: scale(.96); opacity: .8; }
+  .abtn.auto   { background: rgba(59,142,243,.12); border-color: var(--accent2); color: var(--accent); }
+  .abtn.estop  { background: rgba(239,68,68,.12); border-color: #7f1d1d; color: var(--red); }
+  .abtn svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; }
 
-            background-color: #4CAF50;
-            color: white;
-        }
+  .arm-card {
+    flex: 1;
+    min-height: 0;
+  }
 
-        button:hover {
+  .presets {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+    flex: 0 0 auto;
+  }
+  .pre {
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border2);
+    background: var(--surface2);
+    color: var(--text2);
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 500;
+    transition: background .1s, border-color .1s, color .1s;
+  }
+  .pre.on    { background: rgba(59,142,243,.15); border-color: var(--accent); color: var(--accent); }
+  .pre.pick  { background: rgba(245,158,11,.1); border-color: #92400e; color: var(--amber); }
 
-            background-color: #45a049;
-        }
+  .servos {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 8px;
+    flex: 1;
+    min-height: 0;
+    align-items: start;
+  }
 
-        input[type=range] {
+  .servo {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 7px;
+    min-width: 0;
+  }
 
-            width: 300px;
-        }
+  .servo-svg-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1;
+    cursor: pointer;
+    touch-action: none;
+  }
+  .servo-svg-wrap svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+    overflow: visible;
+  }
 
-        .status {
+  .servo-name {
+    font-size: 9px;
+    font-weight: 600;
+    color: var(--text3);
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    text-align: center;
+  }
 
-            font-size: 22px;
-            font-weight: bold;
-            color: #00ff88;
-        }
+  .servo-readout {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1;
+  }
 
-        .danger {
+  .servo-btns {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    width: 100%;
+  }
 
-            background-color: red !important;
-        }
+  .sbtn {
+    position: relative;
+    height: 48px;
+    border-radius: 14px;
+    border: 1px solid var(--border2);
+    background: linear-gradient(180deg, #273041, #1c222d);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 24px;
+    font-weight: 800;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.05);
+    transition: transform .05s, background .1s, border-color .1s, filter .1s;
+    touch-action: none;
+    user-select: none;
+  }
+  .sbtn:active {
+    transform: scale(.96);
+    border-color: var(--accent);
+    background: linear-gradient(180deg, rgba(59,142,243,.32), rgba(34,112,212,.24));
+    filter: brightness(1.05);
+  }
+  .sbtn.plus { color: #7dd3fc; }
+  .sbtn.minus { color: #fca5a5; }
 
-    </style>
+  .track-bg   { stroke: var(--border2); }
+  .track-fill { stroke: var(--accent); }
+  .thumb-fill { fill: var(--accent); }
+  .dial-text  { fill: var(--text); font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif; font-weight: 700; }
 
+  @media (max-width: 900px) {
+    .layout {
+      grid-template-columns: 1fr;
+      grid-template-rows: auto auto auto;
+      height: auto;
+      overflow-y: auto;
+    }
+    body, html { overflow: auto; }
+    .cam-card  { grid-column: 1; grid-row: 1; }
+    .right-col { grid-column: 1; grid-row: 2; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .det-card  { grid-column: 1; grid-row: 3; }
+    .arm-card  { grid-column: 1 / 3; }
+    .servos    { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .sbtn      { height: 54px; font-size: 26px; }
+    .dp        { height: 60px; font-size: 20px; }
+  }
+
+  @media (max-width: 600px) {
+    .cam-stats   { grid-template-columns: repeat(2, 1fr); }
+    .det-grid    { grid-template-columns: 1fr 1fr; }
+    .right-col   { grid-template-columns: 1fr; }
+    .arm-card    { grid-column: 1; }
+    .servos      { grid-template-columns: 1fr 1fr; }
+  }
+</style>
 </head>
+<body onmouseup="ms()" ontouchend="ms()">
 
-<body onmouseup="stop()" ontouchend="stop()">
-
-<h1>🤖 Pi5 Robot Dashboard</h1>
-
-<!-- MODE CONTROL -->
-<div class="card">
-
-    <h2>Mode Control</h2>
-
-    <button onclick="toggleAuto()">
-        Toggle Auto Mode
-    </button>
-
-    <br><br>
-
-    <button
-        class="danger"
-        onclick="emergencyStop()">
-
-        EMERGENCY STOP
-
-    </button>
-
-    <p>
-
-        Current Mode:
-
-        <span id="mode_text">
-
-            MANUAL
-
-        </span>
-
-    </p>
-
+<div class="topbar">
+  <div class="topbar-logo">
+    <span class="logo-dot"></span>
+    Pi5 Robot
+  </div>
+  <div class="topbar-chips">
+    <span class="chip" id="mode-chip"><span class="chip-dot"></span><span id="mode-lbl">Manual</span></span>
+    <span class="chip ok"><span class="chip-dot"></span><span id="fps-lbl">24 fps</span></span>
+    <span class="chip warn">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M22 10h1a1 1 0 010 4h-1"/></svg>
+      <span id="temp-lbl">42 °C</span>
+    </span>
+  </div>
 </div>
 
-<!-- CAMERA -->
-<div class="card">
-
-    <h2>🎥 Live Detection Stream</h2>
-
-    <img src="/video_feed" width="640">
-
-</div>
-
-<!-- DETECTION INFO -->
-<div class="card">
-
-    <h2>🧠 Detection Information</h2>
-
-    <p>
-        Object:
-        <span id="label">None</span>
-    </p>
-
-    <p>
-        Confidence:
-        <span id="conf">0</span>
-    </p>
-
-    <p>
-        Position:
-        <span id="position">NONE</span>
-    </p>
-
-    <p>
-        X Coordinate:
-        <span id="x_axis">0</span>
-    </p>
-
-    <p>
-        Y Coordinate:
-        <span id="y_axis">0</span>
-    </p>
-
-    <p>
-        Width:
-        <span id="width">0</span>
-    </p>
-
-    <p>
-        Height:
-        <span id="height">0</span>
-    </p>
-
-    <p>
-        Distance:
-        <span id="distance">0</span> cm
-    </p>
-
-    <p>
-        FPS:
-        <span id="fps">0</span>
-    </p>
-
-    <p>
-        CPU Temp:
-        <span id="cpu_temp">0</span> °C
-    </p>
-
-    <p class="status">
-
-        Robot Status:
-
-        <span id="robot_status">
-
-            MANUAL MODE
-
-        </span>
-
-    </p>
-
-</div>
-
-<!-- MOVEMENT -->
-<div class="card">
-
-    <h2>🚗 Robot Movement</h2>
-
-    <button
-        onmousedown="setControl(100,0,100,0)"
-        onmouseup="stop()"
-        ontouchstart="setControl(100,0,100,0)"
-        ontouchend="stop()">
-
-        Forward
-
-    </button>
-
-    <br><br>
-
-    <button
-        onmousedown="setControl(100,0,100,1)"
-        onmouseup="stop()"
-        ontouchstart="setControl(100,0,100,1)"
-        ontouchend="stop()">
-
-        Left
-
-    </button>
-
-    <button
-        onmousedown="setControl(100,1,100,0)"
-        onmouseup="stop()"
-        ontouchstart="setControl(100,1,100,0)"
-        ontouchend="stop()">
-
-        Right
-
-    </button>
-
-    <br><br>
-
-    <button
-        onmousedown="setControl(100,1,100,1)"
-        onmouseup="stop()"
-        ontouchstart="setControl(100,1,100,1)"
-        ontouchend="stop()">
-
-        Backward
-
-    </button>
-
-</div>
-
-<!-- ARM CONTROL -->
-<div class="card">
-
-    <h2>🦾 Arm Control</h2>
-
-    <button onclick="loadPreset('home')">
-
-        HOME
-
-    </button>
-
-    <button onclick="loadPreset('pickup')">
-
-        PICKUP
-
-    </button>
-    
-    <button
-onclick="pickBottle()"
-style="background:#ff9800;">
-
-PICK BOTTLE
-
-</button>
-
-    <br><br>
-
-    Servo 1 (Base):
-    <span id="servo1_val">90</span>°
-    <br>
-
-    <input type="range"
-           min="0"
-           max="180"
-           value="90"
-           onchange="moveServo(1,this.value)">
-
-    <br><br>
-
-    Servo 2 (Shoulder):
-    <span id="servo2_val">90</span>°
-    <br>
-
-    <input type="range"
-           min="0"
-           max="180"
-           value="90"
-           onchange="moveServo(2,this.value)">
-
-    <br><br>
-
-    Servo 3 (Elbow):
-    <span id="servo3_val">90</span>°
-    <br>
-
-    <input type="range"
-           min="0"
-           max="180"
-           value="90"
-           onchange="moveServo(3,this.value)">
-
-    <br><br>
-
-    Servo 4 (Wrist):
-    <span id="servo4_val">90</span>°
-    <br>
-
-    <input type="range"
-           min="0"
-           max="180"
-           value="90"
-           onchange="moveServo(4,this.value)">
-
-    <br><br>
-
-    Servo 5 (Gripper):
-    <span id="servo5_val">90</span>°
-    <br>
-
-    <input type="range"
-           min="0"
-           max="180"
-           value="90"
-           onchange="moveServo(5,this.value)">
-
+<div class="layout">
+
+  <div class="card cam-card">
+    <div class="card-title">Live feed</div>
+    <div class="cam-shell">
+      <div class="cam-corner tl"></div>
+      <div class="cam-corner tr"></div>
+      <div class="cam-corner bl"></div>
+      <div class="cam-corner br"></div>
+      <div class="cam-rec">
+        <span class="chip-dot" style="width:6px;height:6px;background:var(--red);animation:pulse 1s infinite"></span>
+        LIVE
+      </div>
+      <img src="/video_feed" onerror="this.style.display='none'" alt="Camera feed">
+      <div class="cam-placeholder">
+        <svg viewBox="0 0 24 24"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+        <span>/video_feed</span>
+      </div>
+    </div>
+    <div class="cam-stats">
+      <div class="cstat"><div class="cstat-label">Object</div><div class="cstat-val info" id="d-label">None</div></div>
+      <div class="cstat"><div class="cstat-label">Confidence</div><div class="cstat-val" id="d-conf">—</div></div>
+      <div class="cstat"><div class="cstat-label">Distance</div><div class="cstat-val" id="d-dist">0 cm</div></div>
+      <div class="cstat"><div class="cstat-label">Position</div><div class="cstat-val" id="d-pos">—</div></div>
+    </div>
+  </div>
+
+  <div class="card det-card">
+    <div class="card-title">Detection detail</div>
+    <div class="det-grid">
+      <div class="det-chip"><div class="det-label">Status</div><div class="det-val ok" id="d-status">Standby</div></div>
+      <div class="det-chip"><div class="det-label">X coord</div><div class="det-val" id="d-x">0</div></div>
+      <div class="det-chip"><div class="det-label">Y coord</div><div class="det-val" id="d-y">0</div></div>
+      <div class="det-chip"><div class="det-label">Width</div><div class="det-val" id="d-w">0</div></div>
+      <div class="det-chip"><div class="det-label">Height</div><div class="det-val" id="d-h">0</div></div>
+    </div>
+  </div>
+
+  <div class="right-col">
+
+    <div class="card">
+      <div class="card-title">Movement</div>
+      <div class="dpad">
+        <div class="dp empty"></div>
+        <div class="dp" id="bf" onmousedown="mv('f')" ontouchstart="mv('f')" ontouchend="ms()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg>
+        </div>
+        <div class="dp empty"></div>
+        <div class="dp" id="bl" onmousedown="mv('l')" ontouchstart="mv('l')" ontouchend="ms()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+        </div>
+        <div class="dp center">■</div>
+        <div class="dp" id="br" onmousedown="mv('r')" ontouchstart="mv('r')" ontouchend="ms()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+        <div class="dp empty"></div>
+        <div class="dp" id="bb" onmousedown="mv('b')" ontouchstart="mv('b')" ontouchend="ms()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="dp empty"></div>
+      </div>
+      <div class="action-btns">
+        <button class="abtn auto" onclick="toggleAuto()">
+          <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          Auto mode
+        </button>
+        <button class="abtn estop" onclick="eStop()">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+          E-stop
+        </button>
+      </div>
+    </div>
+
+    <div class="card arm-card">
+      <div class="card-title">Arm control</div>
+      <div class="presets">
+        <button class="pre" id="pre-home" onclick="preset('home')">Home</button>
+        <button class="pre" id="pre-pickup" onclick="preset('pickup')">Pickup</button>
+        <button class="pre pick" onclick="preset('bottle')">Pick bottle</button>
+      </div>
+      <div class="servos" id="servos"></div>
+    </div>
+
+  </div>
 </div>
 
 <script>
+const SNAMES = ['Base','Shldr','Elbow','Wrist','Grip'];
+const sVals  = [90, 90, 90, 90, 90];
+const MN = -130, MX = 130;
+const CX = 50, CY = 50, R = 36, SW = 6;
 
-// =====================================================
-// MOVEMENT
-// =====================================================
-function setControl(ls, ld, rs, rd) {
+function polar(r, deg) {
+  const a = (deg - 90) * Math.PI / 180;
+  return [CX + r * Math.cos(a), CY + r * Math.sin(a)];
+}
+function arcD(a1, a2) {
+  const [x1,y1] = polar(R, a1), [x2,y2] = polar(R, a2);
+  const lg = Math.abs(a2 - a1) > 180 ? 1 : 0;
+  return `M${x1},${y1}A${R},${R},0,${lg},1,${x2},${y2}`;
+}
+function v2ang(v) { return MN + (v / 180) * (MX - MN); }
 
-    fetch('/control', {
-
-        method: 'POST',
-
-        headers: {
-            'Content-Type':
-            'application/x-www-form-urlencoded'
-        },
-
-        body:
-        `ls=${ls}&ld=${ld}&rs=${rs}&rd=${rd}`
-    });
+function buildServos() {
+  const g = document.getElementById('servos');
+  SNAMES.forEach((name, i) => {
+    const ang = v2ang(sVals[i]);
+    const [tx, ty] = polar(R - 12, ang);
+    const div = document.createElement('div');
+    div.className = 'servo';
+    div.innerHTML = `
+      <div class="servo-svg-wrap" id="sw${i}">
+        <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+          <path class="track-bg" d="${arcD(MN, MX)}" fill="none" stroke-width="${SW}" stroke-linecap="round"/>
+          <path class="track-fill" id="sf${i}" d="${arcD(MN, ang)}" fill="none" stroke-width="${SW}" stroke-linecap="round"/>
+          <circle class="thumb-fill" id="st${i}" cx="${tx}" cy="${ty}" r="6"/>
+          <text class="dial-text" id="sn${i}" x="50" y="57" text-anchor="middle" font-size="18">${sVals[i]}</text>
+          <text fill="#4e5a6b" x="50" y="71" text-anchor="middle" font-size="9" font-weight="500" letter-spacing="1">DEG</text>
+        </svg>
+      </div>
+      <div class="servo-name">${name}</div>
+      <div class="servo-readout" id="sr${i}">${sVals[i]}°</div>
+      <div class="servo-btns">
+        <div class="sbtn minus" onmousedown="hold(${i},-5)" onmouseup="hclr()" ontouchstart="hold(${i},-5)" ontouchend="hclr()">−</div>
+        <div class="sbtn plus"  onmousedown="hold(${i}, 5)" onmouseup="hclr()" ontouchstart="hold(${i}, 5)" ontouchend="hclr()">+</div>
+      </div>`;
+    g.appendChild(div);
+    makeDrag(i);
+  });
 }
 
-function stop() {
-
-    setControl(0,0,0,0);
+function redial(i) {
+  const ang = v2ang(sVals[i]);
+  const [tx, ty] = polar(R - 12, ang);
+  const fp = document.getElementById('sf' + i);
+  const th = document.getElementById('st' + i);
+  const nm = document.getElementById('sn' + i);
+  const sr = document.getElementById('sr' + i);
+  if (fp) fp.setAttribute('d', ang > MN ? arcD(MN, ang) : '');
+  if (th) { th.setAttribute('cx', tx); th.setAttribute('cy', ty); }
+  if (nm) nm.textContent = sVals[i];
+  if (sr) sr.textContent = sVals[i] + '°';
 }
 
-// =====================================================
-// SERVO
-// =====================================================
-function moveServo(id, angle) {
-
-    fetch('/servo', {
-
-        method: 'POST',
-
-        headers: {
-            'Content-Type':
-            'application/x-www-form-urlencoded'
-        },
-
-        body:
-        `id=${id}&angle=${angle}`
-    });
+function setSV(i, v) {
+  sVals[i] = Math.max(0, Math.min(180, Math.round(v)));
+  redial(i);
 }
 
-// =====================================================
-// AUTO MODE
-// =====================================================
-let autoMode = false;
+function makeDrag(i) {
+  const el = document.getElementById('sw' + i);
+  if (!el) return;
+  let drag = false;
+  function getAng(e) {
+    const rc = el.getBoundingClientRect();
+    const cx = rc.left + rc.width / 2, cy = rc.top + rc.height / 2;
+    const px = e.touches ? e.touches[0].clientX : e.clientX;
+    const py = e.touches ? e.touches[0].clientY : e.clientY;
+    let a = Math.atan2(py - cy, px - cx) * 180 / Math.PI + 90;
+    if (a > 180) a -= 360;
+    return Math.max(MN, Math.min(MX, a));
+  }
+  function apply(e) { setSV(i, ((getAng(e) - MN) / (MX - MN)) * 180); }
+  el.addEventListener('mousedown', e => { drag = true; apply(e); });
+  el.addEventListener('touchstart', e => { drag = true; apply(e); }, { passive: true });
+  window.addEventListener('mousemove', e => { if (drag) apply(e); });
+  window.addEventListener('touchmove', e => { if (drag) apply(e); }, { passive: true });
+  window.addEventListener('mouseup', () => drag = false);
+  window.addEventListener('touchend', () => drag = false);
+}
 
+let ht = null;
+function hold(i, d) {
+  setSV(i, sVals[i] + d);
+  ht = setInterval(() => setSV(i, sVals[i] + d), 100);
+}
+function hclr() {
+  clearInterval(ht);
+  ht = null;
+}
+
+buildServos();
+
+const PRESETS = {
+  home:   [90, 90,  90, 90, 90],
+  pickup: [90, 45, 135, 90, 30],
+  bottle: [90, 60, 120, 90, 20],
+};
+function preset(name) {
+  document.querySelectorAll('.pre').forEach(b => b.classList.remove('on'));
+  const el = document.getElementById('pre-' + name);
+  if (el) el.classList.add('on');
+  if (PRESETS[name]) PRESETS[name].forEach((v, i) => setSV(i, v));
+}
+
+const DIRS = { f: 'bf', l: 'bl', r: 'br', b: 'bb' };
+function mv(d) {
+  Object.values(DIRS).forEach(id => {
+    const e = document.getElementById(id);
+    if (e) e.classList.remove('on');
+  });
+  const e = document.getElementById(DIRS[d]);
+  if (e) e.classList.add('on');
+  fetch('/control', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: d === 'f' ? 'ls=100&ld=0&rs=100&rd=0'
+        : d === 'b' ? 'ls=100&ld=1&rs=100&rd=1'
+        : d === 'l' ? 'ls=100&ld=1&rs=100&rd=0'
+        :              'ls=100&ld=0&rs=100&rd=1'
+  });
+}
+function ms() {
+  Object.values(DIRS).forEach(id => {
+    const e = document.getElementById(id);
+    if (e) e.classList.remove('on');
+  });
+  fetch('/control', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'ls=0&ld=0&rs=0&rd=0' });
+}
+
+let isAuto = false;
 function toggleAuto() {
+  fetch('/toggle_auto', { method: 'POST' })
+    .then(r => r.json())
+    .then(d => { isAuto = d.auto_mode; setMode(isAuto ? 'auto' : 'manual'); });
+}
+function eStop() {
+  ms();
+  fetch('/emergency_stop', { method: 'POST' });
+  isAuto = false;
+  setMode('stop');
+  setTimeout(() => setMode('manual'), 2000);
+}
+function setMode(s) {
+  const chip = document.getElementById('mode-chip');
+  const lbl  = document.getElementById('mode-lbl');
+  const st   = document.getElementById('d-status');
+  if (s === 'auto') {
+    chip.className = 'chip info';
+    lbl.textContent = 'Auto';
+    if (st) { st.textContent = 'Auto · tracking'; st.className = 'det-val info'; }
+  } else if (s === 'stop') {
+    chip.className = 'chip danger';
+    lbl.textContent = 'E-stop';
+    if (st) { st.textContent = 'Emergency stop'; st.className = 'det-val'; st.style.color = 'var(--red)'; }
+  } else {
+    chip.className = 'chip';
+    lbl.textContent = 'Manual';
+    if (st) { st.textContent = 'Standby'; st.className = 'det-val ok'; st.style.color = ''; }
+  }
+}
 
-    fetch('/toggle_auto', {
+function sendServo(id, angle) {
+  fetch('/servo', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `id=${id}&angle=${angle}`
+  });
+}
 
-        method: 'POST'
+function loadPreset(name) { fetch('/preset/' + name); }
 
+setInterval(() => {
+  fetch('/get_detection')
+    .then(r => r.json())
+    .then(d => {
+      const set = (id, v) => {
+        const e = document.getElementById(id);
+        if (e) e.textContent = v;
+      };
+      set('d-label', d.label || 'None');
+      set('d-conf',  d.confidence || '—');
+      set('d-pos',   d.position || '—');
+      set('d-dist',  (d.distance || 0) + ' cm');
+      set('d-x',     d.x || 0);
+      set('d-y',     d.y || 0);
+      set('d-w',     d.width || 0);
+      set('d-h',     d.height || 0);
+      if (!isAuto && d.robot_status) set('d-status', d.robot_status);
     })
-
-    .then(response => response.json())
-
-    .then(data => {
-
-        autoMode = data.auto_mode;
-
-        document.getElementById(
-            "mode_text"
-        ).innerText = autoMode
-            ? "AUTO"
-            : "MANUAL";
-    });
-}
-
-// =====================================================
-// EMERGENCY STOP
-// =====================================================
-function emergencyStop(){
-
-    fetch('/emergency_stop',{
-
-        method:'POST'
-    });
-
-    document.getElementById(
-        "mode_text"
-    ).innerText = "MANUAL";
-}
-
-// =====================================================
-// PRESETS
-// =====================================================
-function loadPreset(name){
-
-    fetch('/preset/' + name);
-}
-
-// =====================================================
-// PICK BOTTLE
-// =====================================================
-function pickBottle(){
-
-    fetch('/pick_bottle',{
-
-        method:'POST'
-    });
-}
-
-// =====================================================
-// DETECTION DISPLAY
-// =====================================================
-setInterval(() => {
-
-    fetch('/get_detection')
-
-    .then(response => response.json())
-
-    .then(data => {
-
-        document.getElementById("label").innerText = data.label;
-        document.getElementById("conf").innerText = data.confidence;
-        document.getElementById("position").innerText = data.position;
-        document.getElementById("x_axis").innerText = data.x;
-        document.getElementById("y_axis").innerText = data.y;
-        document.getElementById("width").innerText = data.width;
-        document.getElementById("height").innerText = data.height;
-        document.getElementById("distance").innerText = data.distance;
-        document.getElementById("fps").innerText = data.fps;
-        document.getElementById("robot_status").innerText =
-            data.robot_status;
-    });
-
+    .catch(() => {});
 }, 200);
 
-// =====================================================
-// SERVO STATUS
-// =====================================================
 setInterval(() => {
+  fetch('/get_servos')
+    .then(r => r.json())
+    .then(d => {
+      [1,2,3,4,5].forEach(n => {
+        const v = d['servo' + n];
+        if (v !== undefined) setSV(n - 1, v);
+      });
+    })
+    .catch(() => {});
+}, 300);
 
-    fetch('/get_servos')
-
-    .then(response => response.json())
-
-    .then(data => {
-
-        document.getElementById("servo1_val").innerText = data.servo1;
-        document.getElementById("servo2_val").innerText = data.servo2;
-        document.getElementById("servo3_val").innerText = data.servo3;
-        document.getElementById("servo4_val").innerText = data.servo4;
-        document.getElementById("servo5_val").innerText = data.servo5;
-
-    });
-
-}, 200);
-
-// =====================================================
-// SYSTEM INFO
-// =====================================================
 setInterval(() => {
-
-    fetch('/get_system')
-
-    .then(response => response.json())
-
-    .then(data => {
-
-        document.getElementById(
-            "cpu_temp"
-        ).innerText =
-            data.cpu_temp;
-
-    });
-
+  fetch('/get_system')
+    .then(r => r.json())
+    .then(d => {
+      const t = document.getElementById('temp-lbl');
+      if (t) t.textContent = (d.cpu_temp || 0) + ' °C';
+    })
+    .catch(() => {});
 }, 2000);
 
+const keyMap = { ArrowUp:'f', ArrowDown:'b', ArrowLeft:'l', ArrowRight:'r', w:'f', s:'b', a:'l', d:'r' };
+let keyHeld = null;
+document.addEventListener('keydown', e => {
+  if (keyMap[e.key] && keyHeld !== e.key) {
+    keyHeld = e.key;
+    mv(keyMap[e.key]);
+  }
+});
+document.addEventListener('keyup', e => {
+  if (keyMap[e.key]) {
+    keyHeld = null;
+    ms();
+  }
+});
 </script>
-
 </body>
 </html>
